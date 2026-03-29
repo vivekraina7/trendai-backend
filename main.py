@@ -42,12 +42,14 @@ _origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
 ]
-# Allow network IP access in local dev (e.g. testing from phone on same WiFi)
-# In production FRONTEND_URL will be the Vercel URL — that's all that's needed
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_origin_regex=r"http://192\.168\.\d+\.\d+:\d+",  # local network
+    allow_origin_regex=(
+        r"http://192\.168\.\d+\.\d+:\d+"   # local network (dev)
+        r"|https://.*\.vercel\.app"          # any Vercel deployment
+        r"|https://.*\.leapcell\.dev"        # Leapcell preview URLs
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
