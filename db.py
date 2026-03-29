@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PATH     = os.getenv("DB_PATH", "./edutrend.db")
+DB_PATH     = os.getenv("DB_PATH", "/tmp/edutrend.db")
 TURSO_URL   = os.getenv("TURSO_DATABASE_URL", "")
 TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 USE_TURSO   = bool(TURSO_URL and TURSO_TOKEN)
