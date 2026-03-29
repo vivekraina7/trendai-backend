@@ -1,10 +1,23 @@
-# Python-generated files
+# ── Secrets ───────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Databases / local storage ─────────────────
+*.db
+*.sqlite3
+chroma_db/
 __pycache__/
 *.py[oc]
+
+# ── Virtual envs / uv ─────────────────────────
+.venv/
+.uv/
+
+# ── Build artifacts ──────────────────────────
 build/
 dist/
-wheels/
-*.egg-info
+*.egg-info/
 
-# Virtual environments
-.venv
+# ── OS ───────────────────────────────────────
+.DS_Store
