@@ -28,7 +28,7 @@ async def is_data_stale(db) -> bool:
     return datetime.now(timezone.utc) - latest > timedelta(hours=STALE_HOURS)
 
 
-async def refresh_trends_if_stale(db: aiosqlite.Connection) -> None:
+async def refresh_trends_if_stale(db) -> None:
     """Refresh trends only if stale."""
     if await is_data_stale(db):
         try:
@@ -37,7 +37,7 @@ async def refresh_trends_if_stale(db: aiosqlite.Connection) -> None:
             print(f"⚠️ Trend scrape failed: {e}")
 
 
-async def scrape_and_store_trends(db: aiosqlite.Connection) -> int:
+async def scrape_and_store_trends(db) -> int:
     """Scrape from all sources and upsert into DB. Returns count of rows inserted."""
     all_trends = []
 
