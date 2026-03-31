@@ -3,7 +3,6 @@ Progress routes: manage user learning path and module progress.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from aiosqlite import Connection
 from db import get_db
 from dependencies import get_current_user
 
@@ -83,7 +82,7 @@ class UpdateProgressBody(BaseModel):
 async def enroll_path(
     body: EnrollBody,
     current_user: dict = Depends(get_current_user),
-    db: Connection = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Enroll user in a learning path and initialise module progress rows."""
     if body.path_id not in DEFAULT_PATHS:
@@ -116,7 +115,7 @@ async def enroll_path(
 async def get_path_progress(
     path_id: str,
     current_user: dict = Depends(get_current_user),
-    db: Connection = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Return progress for a specific path."""
     if path_id not in DEFAULT_PATHS:
@@ -125,12 +124,12 @@ async def get_path_progress(
     user_id = current_user["id"]
     path_def = DEFAULT_PATHS[path_id]
 
-    async with db.execute(
+    cur = await db.execute(
         "SELECT module_index, status, completed_at FROM module_progress "
         "WHERE user_id = ? AND path_id = ? ORDER BY module_index",
         (user_id, path_id),
-    ) as cur:
-        rows = await cur.fetchall()
+    )
+    rows = await cur.fetchall()
 
     if not rows:
         # Not enrolled yet – return default (all locked)
@@ -140,7 +139,7 @@ async def get_path_progress(
         ]
         return {"enrolled": False, "path_id": path_id, "modules": modules, "progress_pct": 0}
 
-    progress_map = {r["module_index"]: dict(r) for r in rows}
+    progress_map = {r["module_index"]: {k: r[k] for k in r.keys()} for r in rows}
     modules = []
     for i, mod in enumerate(path_def["modules"]):
         p = progress_map.get(i, {"status": "locked", "completed_at": None})
@@ -164,7 +163,7 @@ async def get_path_progress(
 async def update_module_status(
     body: UpdateProgressBody,
     current_user: dict = Depends(get_current_user),
-    db: Connection = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Mark a module as completed/current/locked."""
     user_id = current_user["id"]
@@ -194,23 +193,23 @@ async def update_module_status(
 @router.get("/")
 async def get_all_progress(
     current_user: dict = Depends(get_current_user),
-    db: Connection = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Get a summary of all enrolled paths for the user."""
     user_id = current_user["id"]
-    async with db.execute(
+    cur = await db.execute(
         "SELECT path_id, path_title, started_at FROM user_paths WHERE user_id = ?",
         (user_id,),
-    ) as cur:
-        paths = await cur.fetchall()
+    )
+    paths = await cur.fetchall()
 
     result = []
     for p in paths:
-        async with db.execute(
+        cur = await db.execute(
             "SELECT status FROM module_progress WHERE user_id = ? AND path_id = ?",
             (user_id, p["path_id"]),
-        ) as cur:
-            mods = await cur.fetchall()
+        )
+        mods = await cur.fetchall()
         total = len(mods)
         completed = sum(1 for m in mods if m["status"] == "completed")
         result.append({

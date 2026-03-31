@@ -11,18 +11,15 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
-import aiosqlite
 
 
 STALE_HOURS = 24  # refresh threshold
 
 
-async def is_data_stale(db: aiosqlite.Connection) -> bool:
+async def is_data_stale(db) -> bool:
     """Check if the trends data is older than STALE_HOURS."""
-    async with db.execute(
-        "SELECT MAX(fetched_at) as latest FROM trends"
-    ) as cur:
-        row = await cur.fetchone()
+    cur = await db.execute("SELECT MAX(fetched_at) as latest FROM trends")
+    row = await cur.fetchone()
     if not row or not row["latest"]:
         return True
     latest = datetime.fromisoformat(row["latest"])
