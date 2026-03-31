@@ -61,18 +61,24 @@ async def scrape_and_store_trends(db) -> int:
     # Add curated static trends that supplement scraped data
     all_trends.extend(_curated_trends())
 
-    # Clear old data and insert fresh
+    # Clear old data and insert fresh in ONE batched HTTP call
     await db.execute("DELETE FROM trends")
-    count = 0
-    for t in all_trends:
-        await db.execute(
-            """INSERT INTO trends (category, name, growth_pct, demand, source)
-               VALUES (?, ?, ?, ?, ?)""",
-            (t["category"], t["name"], t.get("growth_pct", 0.0), t.get("demand", 50.0), t["source"]),
+    insert_data = [
+        (
+            t["category"],
+            t["name"],
+            float(t.get("growth_pct") or 0.0),
+            float(t.get("demand") or 50.0),
+            t["source"],
         )
-        count += 1
-
+        for t in all_trends
+    ]
+    await db.executemany(
+        "INSERT INTO trends (category, name, growth_pct, demand, source) VALUES (?, ?, ?, ?, ?)",
+        insert_data,
+    )
     await db.commit()
+    count = len(insert_data)
     print(f"✅ Stored {count} trend entries")
     return count
 

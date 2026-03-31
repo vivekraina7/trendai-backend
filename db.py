@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PATH     = os.getenv("DB_PATH", "/tmp/edutrend.db")
+DB_PATH     = os.getenv("DB_PATH", "./edutrend.db")
 TURSO_URL   = os.getenv("TURSO_DATABASE_URL", "")
 TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 USE_TURSO   = bool(TURSO_URL and TURSO_TOKEN)
@@ -114,8 +114,14 @@ class _TursoHTTPConn:
         payload = {"requests": requests + [{"type": "close"}]}
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(self._url, json=payload, headers=self._headers)
-            resp.raise_for_status()
-        return resp.json()["results"]
+            if not resp.is_success:
+                try:
+                    detail = resp.json()
+                except Exception:
+                    detail = resp.text
+                raise Exception(f"Turso HTTP {resp.status_code}: {detail}")
+        data = resp.json()
+        return data["results"]
 
     async def execute(self, sql: str, params=()):
         stmt: dict = {"sql": sql}
@@ -128,8 +134,20 @@ class _TursoHTTPConn:
         return _TursoHTTPCursor(r["response"]["result"])
 
     async def executemany(self, sql: str, seq):
+        """Batch all statements into a single HTTP pipeline call."""
+        seq = list(seq)
+        if not seq:
+            return
+        requests = []
         for params in seq:
-            await self.execute(sql, params)
+            stmt: dict = {"sql": sql}
+            if params:
+                stmt["args"] = [_encode_arg(p) for p in params]
+            requests.append({"type": "execute", "stmt": stmt})
+        results = await self._pipeline(requests)
+        for r in results:
+            if isinstance(r, dict) and r.get("type") == "error":
+                raise Exception(r["error"]["message"])
 
     async def commit(self):
         pass  # Turso auto-commits each HTTP request
